@@ -165,7 +165,6 @@ public class Client {
             socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
             out = new PrintWriter(socket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            new Thread(new IncomingReader()).start();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -175,27 +174,10 @@ public class Client {
         JPanel previousUI = (JPanel) frame.getContentPane().getComponent(0); // 현재 UI를 저장
 
         roomUIManager = new RoomUIManager(frame, out, in, this, previousUI);
+        new Thread(new RoomUIManager.IncomingReader(in, roomUIManager)).start(); // Reader 스레드 시작
         frame.revalidate();
         frame.repaint();
     }
-
-    private class IncomingReader implements Runnable {
-        public void run() {
-            String response;
-            try {
-                while ((response = in.readLine()) != null) {
-                    if (response.equals("해당하는 단어가 없습니다.")) {
-                        roomUIManager.showWarningMessage(response);
-                    } else {
-                        roomUIManager.receiveMessage(response);
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
 
     public static void main(String[] args) {
         new Client();

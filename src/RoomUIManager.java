@@ -177,8 +177,6 @@ public class RoomUIManager {
                     out.println(word);
                     inputField.setText("");
                     addMessage("플레이어", true);
-                    lastWord = word;
-                    switchTurn(); // 단어를 보내면 턴을 변경
                 } else {
                     System.err.println("Error: Output stream is not initialized.");
                 }
@@ -199,9 +197,7 @@ public class RoomUIManager {
                 String[] parts = response.split("\n", 2);
                 if (parts.length > 0) {
                     String word = parts[0].replace("Word: ", "").trim();
-                    lastWord = word; // 봇의 마지막 단어를 저장
                 }
-                switchTurn(); // 봇의 단어를 받으면 턴을 변경
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -221,6 +217,12 @@ public class RoomUIManager {
         // Increase font size for "플레이어" and "봇"
         if (message.equals("플레이어") || message.equals("봇")) {
             messageLabel.setFont(new Font(messageLabel.getFont().getName(), Font.BOLD, 16));
+        } else if (message.startsWith("Word:")){
+            switchTurn();
+            System.out.println("말:"+ message);
+            String[] parts = message.split("\n", 2);
+            String word = parts[0].replace("Word: ", "").trim();
+            lastWord = word;
         }
 
         if (isPlayer) {
@@ -283,6 +285,32 @@ public class RoomUIManager {
             frame.repaint();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    public static class IncomingReader implements Runnable {
+        private BufferedReader in;
+        private RoomUIManager roomUIManager;
+
+        public IncomingReader(BufferedReader in, RoomUIManager roomUIManager) {
+            this.in = in;
+            this.roomUIManager = roomUIManager;
+        }
+
+        @Override
+        public void run() {
+            String response;
+            try {
+                while ((response = in.readLine()) != null) {
+                    if (response.equals("해당하는 단어가 없습니다.")) {
+                        roomUIManager.receiveMessage(response);
+                    } else {
+                        roomUIManager.receiveMessage(response);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }

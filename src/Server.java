@@ -138,9 +138,6 @@ public class Server {
                 }
                 in.close();
 
-                // 호출한 JSON을 바로 출력
-                System.out.println("Fetched JSON for word '" + word + "': " + response.toString());
-
                 JSONObject jsonObject = new JSONObject(response.toString());
                 JSONArray itemArray = jsonObject.getJSONObject("channel").getJSONArray("item");
                 if (itemArray.length() > 0) {
