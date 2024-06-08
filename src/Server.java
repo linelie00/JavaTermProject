@@ -18,7 +18,7 @@ import java.util.*;
 import org.json.*;
 
 public class Server {
-    private static final int PORT = 12345;
+    private static final int PORT = 8282;
     private static final String API_URL = "https://opendict.korean.go.kr/api/search";
     private static final String API_KEY = "C956A2407AF0A3C67401DA0B27201261";
 

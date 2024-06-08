@@ -9,7 +9,7 @@ public class RoomUIManager {
 
     private boolean isPlayerTurn = true;
     private JFrame frame;
-    private JTextArea chatArea;
+    private JPanel chatPanel;
     private JTextField inputField;
     private JButton sendButton;
     private PrintWriter out;
@@ -18,13 +18,21 @@ public class RoomUIManager {
     private JPanel previousUI;
 
     private JLabel turnLabel;
+    private String lastWord = null;
 
     private void switchTurn() {
         isPlayerTurn = !isPlayerTurn;
         updateTurnLabel();
         if (!isPlayerTurn) {
-            // 상대의 턴이 되면 단어를 서버에 요청하여 출력
-            requestWordBot();
+            // 상대의 턴이 되면 2초 후 단어를 서버에 요청하여 출력
+            Timer timer = new Timer(2000, new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    requestWordBot();
+                }
+            });
+            timer.setRepeats(false);
+            timer.start();
         }
     }
 
@@ -52,11 +60,11 @@ public class RoomUIManager {
         JPanel mainHeaderPanel = createMainHeaderPanel();
         frame.add(mainHeaderPanel, BorderLayout.NORTH);
 
-        chatArea = new JTextArea();
-        chatArea.setEditable(false);
-        chatArea.setLineWrap(true);
-        chatArea.setFont(UIManager.getFont("TextField.font"));
-        frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
+        chatPanel = new JPanel();
+        chatPanel.setLayout(new BoxLayout(chatPanel, BoxLayout.Y_AXIS));
+        chatPanel.setBackground(Color.WHITE);
+        JScrollPane scrollPane = new JScrollPane(chatPanel);
+        frame.add(scrollPane, BorderLayout.CENTER);
 
         JPanel inputPanel = new JPanel(new BorderLayout());
         inputField = new JTextField();
@@ -164,38 +172,35 @@ public class RoomUIManager {
     private void sendWord() {
         String word = inputField.getText().trim();
         if (word.length() >= 2 && isKoreanWord(word)) {
-            if (out != null) {
-                out.println(word);
-                inputField.setText("");
-                receiveMessage("플레이어: " + word);
-                switchTurn(); // 단어를 보내면 턴을 변경
+            if (lastWord == null || word.startsWith(lastWord.substring(lastWord.length() - 1))) {
+                if (out != null) {
+                    out.println(word);
+                    inputField.setText("");
+                    addMessage("플레이어", true);
+                    lastWord = word;
+                    switchTurn(); // 단어를 보내면 턴을 변경
+                } else {
+                    System.err.println("Error: Output stream is not initialized.");
+                }
             } else {
-                System.err.println("Error: Output stream is not initialized.");
+                showWarningMessage("단어는 '" + lastWord.substring(lastWord.length() - 1) + "'로 시작해야 합니다.");
             }
         } else {
             showWarningMessage("유효하지 않은 단어입니다.");
         }
     }
 
-    private void requestWordFromServer() {
-        try {
-            out.println("/requestword");
-            String response = in.readLine();
-            if (response != null) {
-                receiveMessage(response);
-                switchTurn(); // 단어를 받으면 턴을 변경
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     private void requestWordBot() {
+        addMessage("봇", false);
         try {
             out.println("/requestword");
             String response = in.readLine();
             if (response != null) {
-                receiveMessage("봇: " + response);
+                String[] parts = response.split("\n", 2);
+                if (parts.length > 0) {
+                    String word = parts[0].replace("Word: ", "").trim();
+                    lastWord = word; // 봇의 마지막 단어를 저장
+                }
                 switchTurn(); // 봇의 단어를 받으면 턴을 변경
             }
         } catch (Exception e) {
@@ -203,8 +208,46 @@ public class RoomUIManager {
         }
     }
 
+    private void addMessage(String message, boolean isPlayer) {
+        JPanel messagePanel = new JPanel();
+        messagePanel.setLayout(new BorderLayout());
+        messagePanel.setBackground(Color.WHITE);
+        messagePanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10)); // 마진 추가
+
+        JLabel messageLabel = new JLabel("<html><body style='width: 200px;'>" + message + "</body></html>");
+        messageLabel.setOpaque(true);
+        messageLabel.setBackground(Color.WHITE);
+
+        // Increase font size for "플레이어" and "봇"
+        if (message.equals("플레이어") || message.equals("봇")) {
+            messageLabel.setFont(new Font(messageLabel.getFont().getName(), Font.BOLD, 16));
+        }
+
+        if (isPlayer) {
+            JPanel wrapper = new JPanel(new BorderLayout());
+            wrapper.add(messageLabel, BorderLayout.WEST);
+            wrapper.setBackground(Color.WHITE);
+            messagePanel.add(wrapper, BorderLayout.WEST);
+        } else {
+            messagePanel.add(messageLabel, BorderLayout.WEST);
+        }
+
+        chatPanel.add(messagePanel);
+        chatPanel.revalidate();
+        chatPanel.repaint();
+
+        // Scroll to bottom
+        JScrollPane scrollPane = (JScrollPane) chatPanel.getParent().getParent();
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                scrollPane.getVerticalScrollBar().setValue(scrollPane.getVerticalScrollBar().getMaximum());
+            }
+        });
+    }
+
     public void receiveMessage(String message) {
-        chatArea.append(message + "\n");
+        addMessage(message, false);
     }
 
     public void showWarningMessage(String message) {
