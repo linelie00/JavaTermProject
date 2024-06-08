@@ -171,6 +171,8 @@ public class RoomUIManager {
 
     private void sendWord() {
         String word = inputField.getText().trim();
+        word = DuEumLaw.applyDuEumLaw(word); // 두음법칙 적용
+
         if (word.length() >= 2 && isKoreanWord(word)) {
             if (lastWord == null || word.startsWith(lastWord.substring(lastWord.length() - 1))) {
                 if (out != null) {
